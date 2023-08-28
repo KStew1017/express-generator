@@ -12,16 +12,17 @@ const mongoose = require("mongoose");
 const passport = require('passport');
 const authenticate = require('./authenticate');
 
+
+const config = require('./config');
+
+const url = config.mongoUrl;
+
 const connect = mongoose.connect(url, {
   useCreateIndex: true,
   useFindAndModify: false,
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
-
-const config = require('./config');
-
-const url = config.mongoUrl;
 
 connect.then(
   () => console.log("Connected correctly to server"),
@@ -30,6 +31,15 @@ connect.then(
 
 var app = express();
 
+app.all('*', (req, res, next) => {
+    if (req.secure) {
+        return next();
+    } else {
+        console.log(`Redirecting to: https://${req.hostname}:${app.get('secPort')}${req.url}`);
+        res.redirect(301, `https://${req.hostname}:${app.get('secPort')}${req.url}`);
+    }
+});
+
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "jade");
 
@@ -37,13 +47,10 @@ app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+app.use(passport.initialize());
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
-
-app.use(passport.initialize());
-
-app.use(auth);
 
 app.use(express.static(path.join(__dirname, "public")));
 
